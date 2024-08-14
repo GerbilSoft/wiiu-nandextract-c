@@ -460,7 +460,16 @@ void extractDir(fst_t fst, uint16_t entry, char* parent)
 void extractFile(fst_t fst, uint16_t entry, char* parent)
 {
 	uint16_t fat;
-	uint32_t cluster_span = (uint32_t) (fst.size / 0x4000) + 1;
+	uint32_t cluster_span = (uint32_t) (fst.size / 0x4000);
+	uint32_t last_cluster_size = fst.size % 0x4000;
+	if (last_cluster_size == 0)
+	{
+		last_cluster_size = 0x4000;
+	}
+	else
+	{
+		cluster_span++;
+	}
 
 	char filename[PATH_MAX] = { 0 };
 	snprintf(filename, 13, "%s", fst.filename);
@@ -479,15 +488,18 @@ void extractFile(fst_t fst, uint16_t entry, char* parent)
 	}
 
 	// FIXME: If the FAT chain is longer than cluster_span, there's an error...
-	// FIXME: Truncate to the actual size indicated in the FST?
 	fat = fst.sub;
-	for (int i = 0; fat < 0xFFF0; i++)
+	for (int i = 0; i <= cluster_span && fat < 0xFFF0; i++)
 	{
 		//extracting...
 		uint8_t* cluster = getCluster(fat);
-		fwrite(cluster, 0x4000, 1, bf);
+		fwrite(cluster, (i+1 < cluster_span) ? 0x4000 : last_cluster_size, 1, bf);
 		free(cluster);
 		fat = getFAT(fat);
+	}
+	if (fat < 0xFFF0)
+	{
+		printf("WARNING: %s: FAT cluster chain exceeds file size; may be corrupted!\n", newfilename);
 	}
 
 	fclose(bf);
