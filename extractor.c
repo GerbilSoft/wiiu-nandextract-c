@@ -461,7 +461,6 @@ void extractFile(fst_t fst, uint16_t entry, char* parent)
 {
 	uint16_t fat;
 	uint32_t cluster_span = (uint32_t) (fst.size / 0x4000) + 1;
-	uint8_t* data = calloc(cluster_span * 0x4000, sizeof(uint8_t));
 
 	char filename[PATH_MAX] = { 0 };
 	snprintf(filename, 13, "%s", fst.filename);
@@ -479,21 +478,19 @@ void extractFile(fst_t fst, uint16_t entry, char* parent)
 		printf("Error opening %s: %d\n", path, errno);
 	}
 
+	// FIXME: If the FAT chain is longer than cluster_span, there's an error...
+	// FIXME: Truncate to the actual size indicated in the FST?
 	fat = fst.sub;
 	for (int i = 0; fat < 0xFFF0; i++)
 	{
 		//extracting...
-		printf("extracting %s cluster %i\n", filename, i);
 		uint8_t* cluster = getCluster(fat);
-		memcpy((uint8_t*) (data + (i * 0x4000)), cluster, 0x4000);
-		fat = getFAT(fat);
+		fwrite(cluster, 0x4000, 1, bf);
 		free(cluster);
+		fat = getFAT(fat);
 	}
 
-	fwrite(data, fst.size, 1, bf);
 	fclose(bf);
-
-	free(data);
 
 	printf("extracted file: %s\n", newfilename);
 }
