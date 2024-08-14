@@ -464,10 +464,14 @@ void extractFile(fst_t fst, uint16_t entry, char* parent)
 	uint32_t last_cluster_size = fst.size % 0x4000;
 	if (last_cluster_size == 0)
 	{
+		// File is a multiple of 16 KB.
+		// cluster_span is correct.
 		last_cluster_size = 0x4000;
 	}
 	else
 	{
+		// File is not a multiple of 16 KB.
+		// Add one to cluster_span so we read the partial final cluster.
 		cluster_span++;
 	}
 
